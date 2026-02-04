@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inner Circle Esports | Analyst Dashboard</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Supabase Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --brand-color: #ff3b47;
+            --brand-glow: rgba(255, 59, 71, 0.4);
+            --bg-dark: #0b0c10;
+            --card-bg: rgba(26, 28, 35, 0.95);
+            --text-main: #e0e0e0;
+            --text-bright: #ffffff;
+            --border-color: rgba(255, 255, 255, 0.15);
+            --radiant: #00ffcc;
+            --dire: #ff2a2a;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        .app-header { background: rgba(11, 12, 16, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); padding: 15px 0; margin-bottom: 30px; position: sticky; top: 0; z-index: 100; }
+        .brand-container { display: flex; align-items: center; gap: 15px; }
+        .brand-logo { height: 50px; width: auto; filter: drop-shadow(0 0 5px var(--brand-glow)); }
+        .brand-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.8rem; color: var(--text-bright); text-transform: uppercase; letter-spacing: 2px; line-height: 1; }
+        .brand-subtitle { font-size: 0.8rem; color: var(--brand-color); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+
+        /* AUTH SCREEN */
+        .auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1a1c25 0%, #000 100%); z-index: 2000; position: fixed; top: 0; left: 0; width: 100%; }
+        .auth-box { width: 400px; background: var(--card-bg); padding: 40px; border: 1px solid var(--brand-color); border-radius: 8px; box-shadow: 0 0 30px var(--brand-glow); }
+
+        /* CARDS & TABS */
+        .tech-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); position: relative; }
+        
+        .nav-tabs { border-bottom: 1px solid var(--border-color); gap: 5px; }
+        .nav-link { font-family: 'Rajdhani', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #888; background: transparent; border: 1px solid transparent; border-radius: 4px 4px 0 0; transition: all 0.3s; cursor: pointer; }
+        .nav-link:hover { color: var(--text-bright); border-color: rgba(255,255,255,0.1); }
+        .nav-link.active { color: var(--brand-color) !important; background: rgba(255, 59, 71, 0.05); border-color: var(--border-color) var(--border-color) transparent; }
+
+        /* INPUTS */
+        .form-control, .form-select { background-color: rgba(0, 0, 0, 0.5); border: 1px solid var(--border-color); color: var(--text-bright) !important; border-radius: 2px; font-family: 'Rajdhani', sans-serif; letter-spacing: 0.5px; }
+        .form-control:focus, .form-select:focus { background-color: rgba(0,0,0,0.7); border-color: var(--brand-color); box-shadow: 0 0 8px var(--brand-glow); color: white; }
+        .form-control::placeholder { color: #666 !important; font-family: 'Inter', sans-serif; letter-spacing: 0; }
+        .form-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 4px; }
+
+        /* IMAGES & BADGES */
+        .hero-icon-sm { width: 32px; height: 18px; object-fit: cover; margin-right: 8px; border: 1px solid #444; }
+        .hero-icon-lg { width: 100px; height: 56px; object-fit: cover; border: 1px solid var(--border-color); box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .ban-input { opacity: 0.7; border-color: #522; color: #eaa !important; }
+
+        /* AUTOCOMPLETE */
+        .autocomplete-wrapper { position: relative; width: 100%; }
+        .suggestions-list { 
+            background: #151515; border: 1px solid var(--brand-color); position: absolute; width: 100%; 
+            z-index: 9999; display: none; max-height: 300px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,1); 
+        }
+        .suggestion-item { padding: 8px 12px; border-bottom: 1px solid #333; cursor: pointer; display: flex; align-items: center; }
+        .suggestion-item:hover { background: var(--brand-color); color: white; }
+
+        /* TABLES & LISTS */
+        .table-tech { --bs-table-bg: transparent; --bs-table-color: var(--text-main); border-color: var(--border-color); }
+        .table-tech thead th { font-family: 'Rajdhani', sans-serif; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; color: var(--brand-color); border-bottom: 2px solid var(--border-color); cursor: pointer; }
+        .table-tech thead th:hover { color: white; text-shadow: 0 0 5px var(--brand-glow); }
+        .stats-row:hover td { background-color: rgba(255, 255, 255, 0.05); color: white; cursor: pointer; }
+
+        /* HISTORY */
+        .history-card-header { background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--border-color); }
+        .hist-pick-wrapper { position: relative; display: inline-block; margin-right: 4px; }
+        .hist-pick-img { width: 60px; height: 34px; object-fit: cover; border: 1px solid #555; border-radius: 2px; }
+        .hist-pos-badge { position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.8); color: gold; font-size: 10px; padding: 0 3px; font-family: 'Rajdhani'; font-weight: bold; }
+        .hist-ban-wrapper { position: relative; display: inline-block; margin-right: 2px; }
+        .hist-ban-img { width: 45px; height: 25px; object-fit: cover; border-radius: 2px; filter: grayscale(100%) sepia(100%) hue-rotate(320deg) saturate(300%) contrast(0.8); opacity: 0.6; border: 1px solid #522; }
+        .hist-ban-wrapper::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top right, transparent calc(50% - 1px), rgba(200,50,50,0.8) 50%, transparent calc(50% + 1px)), linear-gradient(to bottom right, transparent calc(50% - 1px), rgba(200,50,50,0.8) 50%, transparent calc(50% + 1px)); pointer-events: none; }
+
+        /* HELPERS */
+        .modal-content { background: #14161b; border: 1px solid var(--border-color); box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        .modal-header { border-bottom: 1px solid var(--border-color); }
+        .stat-box { background: rgba(255,255,255,0.05); border: 1px solid #444; padding: 10px; font-size: 0.9rem; text-align: center; border-radius: 4px; }
+        .text-win { color: var(--radiant); text-shadow: 0 0 5px rgba(0, 255, 204, 0.2); }
+        .text-loss { color: var(--dire); }
+        .text-no-data { color: rgba(255,255,255,0.3) !important; font-style: italic; font-size: 0.85rem; padding: 5px; }
+        
+        .fp-toggle-label { cursor: pointer; padding: 5px 10px; border: 1px solid #444; border-radius: 4px; transition: 0.3s; font-size: 0.8rem; text-transform: uppercase; font-family: 'Rajdhani'; display: block; text-align: center; }
+        .fp-radio:checked + .fp-toggle-label[for="fpRadiant"] { background: rgba(0, 255, 204, 0.2); border-color: var(--radiant); color: var(--radiant); font-weight: bold; }
+        .fp-radio:checked + .fp-toggle-label[for="fpDire"] { background: rgba(255, 42, 42, 0.2); border-color: var(--dire); color: var(--dire); font-weight: bold; }
+        .fp-radio { display: none; }
+
+        .custom-toast { visibility: hidden; min-width: 250px; background-color: #1a1c21; border-left: 5px solid var(--brand-color); color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 10000; left: 50%; bottom: 30px; transform: translateX(-50%); font-family: 'Rajdhani'; font-weight: 600; box-shadow: 0 5px 15px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.5s, bottom 0.5s; }
+        .custom-toast.show { visibility: visible; opacity: 1; bottom: 50px; }
+        
+        /* Stats Alignment */
+        .stat-val-games { width: 60px; text-align: right; color: #888; font-size: 0.9em; }
+        .stat-val-wl { width: 70px; text-align: center; font-weight: 500; color: #fff; font-size: 0.9em; }
+        .stat-val-pct { width: 55px; text-align: right; font-weight: 700; font-family: 'Rajdhani'; font-size: 1.1em; }
+        
+        /* Admin Visibility */
+        .admin-only { display: none; } /* Hidden by default */
+        body.is-admin .admin-only { display: block !important; }
+        
+        .d-none { display: none !important; }
+    </style>
+</head>
+<body>
+
+<!-- AUTH SECTION -->
+<div id="authSection" class="auth-container">
+    <div class="auth-box">
+        <h2 class="text-center text-white mb-4" style="font-family:'Rajdhani'">INNER CIRCLE LOGIN</h2>
+        <div class="mb-3"><label class="form-label">Email</label><input type="email" id="authEmail" class="form-control" placeholder="analyst@team.com"></div>
+        <div class="mb-4"><label class="form-label">Password</label><input type="password" id="authPass" class="form-control" placeholder="••••••"></div>
+        <div class="d-grid gap-2">
+            <button class="btn btn-danger" onclick="handleLogin()">LOGIN</button>
+            <button class="btn btn-outline-light" onclick="handleRegister()">REGISTER</button>
+        </div>
+        <div id="authMsg" class="text-center mt-3 small text-secondary"></div>
+    </div>
+</div>
+
+<!-- APP SECTION -->
+<div id="appSection" style="display:none;">
+    <header class="app-header">
+        <div class="container-fluid px-4 d-flex justify-content-between align-items-center">
+            <div class="brand-container">
+                <img src="./logo.png" alt="Logo" class="brand-logo" onerror="this.style.display='none'"> 
+                <div><div class="brand-title">Inner Circle Esports</div><div class="brand-subtitle">Cloud Analytics - <span id="userRoleBadge" class="text-warning">Loading...</span></div></div>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="handleLogout()">LOGOUT</button>
+        </div>
+    </header>
+
+    <div class="container pb-5">
+        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+            <!-- Admin Only Tab -->
+            <li class="nav-item admin-only">
+                <button class="nav-link active" id="input-tab" data-bs-toggle="tab" data-bs-target="#input-view" type="button"><i class="bi bi-controller"></i> Data Entry</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="team-tab" data-bs-toggle="tab" data-bs-target="#team-view" type="button" onclick="renderTeamProfile()"><i class="bi bi-people-fill"></i> Team Profile</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats-view" type="button" onclick="renderStats()"><i class="bi bi-bar-chart-fill"></i> Hero Database</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="versus-tab" data-bs-toggle="tab" data-bs-target="#versus-view" type="button"><i class="bi bi-lightning-fill"></i> Versus Analysis</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-view" type="button" onclick="renderHistory()"><i class="bi bi-clock-history"></i> Match History</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            
+            <!-- 1. INPUT VIEW -->
+            <div class="tab-pane fade show active" id="input-view">
+                <form id="matchForm" autocomplete="off">
+                    <input type="hidden" id="matchId">
+                    <datalist id="listPatches"></datalist><datalist id="listTournaments"></datalist><datalist id="listTeams"></datalist>
+                    
+                    <div class="tech-card p-4 mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-2"><label class="form-label">Patch</label><input type="text" class="form-control" id="patchInput" list="listPatches" placeholder="7.xx" required></div>
+                            <div class="col-md-3"><label class="form-label">Tournament</label><input type="text" class="form-control" id="tournamentInput" list="listTournaments" placeholder="Event Name" required></div>
+                            <div class="col-md-2"><label class="form-label">Type</label><select class="form-select" id="matchType"><option value="Official">Official</option><option value="Scrim">Scrim</option></select></div>
+                            <div class="col-md-3"><label class="form-label text-center w-100">First Pick</label><div class="d-flex gap-2"><div class="w-50"><input type="radio" name="firstPick" id="fpRadiant" value="Radiant" class="fp-radio" checked><label for="fpRadiant" class="fp-toggle-label">Radiant</label></div><div class="w-50"><input type="radio" name="firstPick" id="fpDire" value="Dire" class="fp-radio"><label for="fpDire" class="fp-toggle-label">Dire</label></div></div></div>
+                            <div class="col-md-2"><label class="form-label">Winner</label><select class="form-select" id="winnerInput"><option value="Radiant" class="text-success">Radiant</option><option value="Dire" class="text-danger">Dire</option></select></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <!-- Radiant -->
+                        <div class="col-md-6">
+                            <div class="tech-card p-4 h-100" style="border-top:3px solid var(--radiant);">
+                                <h4 class="text-white mb-3" style="font-family:'Rajdhani';color:var(--radiant)!important;">RADIANT</h4>
+                                <div class="mb-4"><input type="text" class="form-control form-control-lg" id="radiantName" list="listTeams" placeholder="TEAM NAME"></div>
+                                <div class="mb-2 text-end text-muted small" style="font-family:'Rajdhani'">BANS (7)</div><div id="radiantBans" class="d-flex flex-column gap-1"></div>
+                                <div class="mt-4 mb-2 text-end text-success small" style="font-family:'Rajdhani'">PICKS (5)</div><div id="radiantPicks" class="d-flex flex-column gap-2"></div>
+                            </div>
+                        </div>
+                        <!-- Dire -->
+                        <div class="col-md-6">
+                            <div class="tech-card p-4 h-100" style="border-top:3px solid var(--dire);">
+                                <h4 class="text-white mb-3" style="font-family:'Rajdhani';color:var(--dire)!important;">DIRE</h4>
+                                <div class="mb-4"><input type="text" class="form-control form-control-lg" id="direName" list="listTeams" placeholder="TEAM NAME"></div>
+                                <div class="mb-2 text-end text-muted small" style="font-family:'Rajdhani'">BANS (7)</div><div id="direBans" class="d-flex flex-column gap-1"></div>
+                                <div class="mt-4 mb-2 text-danger text-end small" style="font-family:'Rajdhani'">PICKS (5)</div><div id="direPicks" class="d-flex flex-column gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 mt-4 justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary px-4" onclick="resetForm()"><i class="bi bi-x-circle"></i> Clear</button>
+                        <button type="submit" class="btn btn-danger px-5" style="background:var(--brand-color);border:none;"><i class="bi bi-save2"></i> SAVE MATCH</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 2. TEAM PROFILE -->
+            <div class="tab-pane fade" id="team-view">
+                <div class="tech-card p-4 mb-4">
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-6"><label class="form-label">Filter Patch</label><select id="tpPatch" class="form-select" onchange="renderTeamProfile()"><option value="">All Patches</option></select></div>
+                        <div class="col-md-6"><label class="form-label">Filter Tournament</label><select id="tpTourney" class="form-select" onchange="renderTeamProfile()"><option value="">All Tournaments</option></select></div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12"><label class="form-label text-white">SELECT TEAM</label><select id="teamProfileSelect" class="form-select form-select-lg" onchange="renderTeamProfile()"></select></div>
+                    </div>
+                </div>
+
+                <div id="teamProfileContent" class="d-none">
+                    <!-- Stats Grid -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4"><div class="tech-card p-3 text-center h-100"><h6 class="text-secondary small">OVERALL</h6><div id="tp-overall" class="fs-4 fw-bold text-white mt-2"></div></div></div>
+                        <div class="col-md-4"><div class="tech-card p-3 text-center h-100"><h6 class="text-secondary small">SIDE WR</h6><div id="tp-sides" class="mt-2 text-white"></div></div></div>
+                        <div class="col-md-4"><div class="tech-card p-3 text-center h-100"><h6 class="text-secondary small">PICK ORDER WR</h6><div id="tp-pickorder" class="mt-2 text-white"></div></div></div>
+                    </div>
+                    
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6"><div class="tech-card p-3 h-100"><h6 class="text-white border-bottom border-secondary pb-2 mb-2">MOST PLAYED HEROES</h6><div id="tp-top-played"></div></div></div>
+                        <div class="col-md-6"><div class="tech-card p-3 h-100"><h6 class="text-white border-bottom border-secondary pb-2 mb-2">HIGHEST WR (Min 3 Games)</h6><div id="tp-top-wr"></div></div></div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6"><div class="tech-card p-3 h-100"><h6 class="text-white border-bottom border-secondary pb-2 mb-2">DRAFT PRIORITIES (First 3 Picks)</h6><div id="tp-draft-priority" class="d-flex gap-2 justify-content-center pt-2"></div></div></div>
+                        <div class="col-md-6"><div class="tech-card p-3 h-100"><h6 class="text-white border-bottom border-secondary pb-2 mb-2">FIRST PICK PREFERENCE</h6><div id="tp-fp-heroes"></div></div></div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-6"><div class="tech-card p-3 h-100">
+                            <h6 class="text-white border-bottom border-secondary pb-2 mb-2">BAN ANALYSIS</h6>
+                            <div class="row">
+                                <div class="col-6 border-end border-secondary"><div class="text-danger small fw-bold mb-2 text-center">BY TEAM</div><div id="tp-bans-by"></div></div>
+                                <div class="col-6"><div class="text-info small fw-bold mb-2 text-center">AGAINST TEAM</div><div id="tp-bans-against"></div></div>
+                            </div>
+                        </div></div>
+                        <div class="col-md-6"><div class="tech-card p-3 h-100">
+                            <h6 class="text-white border-bottom border-secondary pb-2 mb-2">BEST COMBOS (Min 3)</h6>
+                            <div class="row">
+                                <div class="col-6 border-end border-secondary"><div class="text-white-50 small mb-2 text-center">DUO</div><div id="tp-combos-2"></div></div>
+                                <div class="col-6"><div class="text-white-50 small mb-2 text-center">TRIO</div><div id="tp-combos-3"></div></div>
+                            </div>
+                        </div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. STATS VIEW -->
+            <div class="tab-pane fade" id="stats-view">
+                <div class="tech-card p-3 mb-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3"><label class="form-label">Patch</label><select id="statsPatch" class="form-select" onchange="renderStats()"><option value="">// ALL</option></select></div>
+                        <div class="col-md-3"><label class="form-label">Event</label><select id="statsTourney" class="form-select" onchange="renderStats()"><option value="">// ALL</option></select></div>
+                        <div class="col-md-3"><label class="form-label">Team</label><select id="statsTeam" class="form-select" onchange="renderStats()"><option value="">// ALL</option></select></div>
+                        <div class="col-md-3"><label class="form-label">Role</label><select id="statsPos" class="form-select" onchange="renderStats()"><option value="">// ANY</option><option value="1">Pos 1</option><option value="2">Pos 2</option><option value="3">Pos 3</option><option value="4">Pos 4</option><option value="5">Pos 5</option></select></div>
+                    </div>
+                </div>
+                <div class="table-responsive tech-card p-2">
+                    <table class="table table-tech table-hover align-middle mb-0">
+                        <thead><tr><th onclick="changeSort('hero')">Hero ↕</th><th class="text-center" onclick="changeSort('picks')">Gms ↕</th><th class="text-center" onclick="changeSort('wins')">Win ↕</th><th class="text-center" onclick="changeSort('winrate')">% ↕</th><th class="text-center" onclick="changeSort('bans')">Ban ↕</th><th class="text-center" onclick="changeSort('total')">P+B ↕</th></tr></thead>
+                        <tbody id="statsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. VERSUS -->
+            <div class="tab-pane fade" id="versus-view">
+                <div class="tech-card p-4 mb-4">
+                    <div class="row align-items-end g-3">
+                        <div class="col-md-5"><label class="form-label text-white">HERO A</label><div class="autocomplete-wrapper"><input type="text" class="form-control form-control-lg hero-input" id="heroA" placeholder="Select Hero..." oninput="renderVersus()"><div class="suggestions-list"></div></div></div>
+                        <div class="col-md-2 text-center text-muted small">VS</div>
+                        <div class="col-md-5"><label class="form-label text-white">HERO B</label><div class="autocomplete-wrapper"><input type="text" class="form-control form-control-lg hero-input" id="heroB" placeholder="Select Hero..." oninput="renderVersus()"><div class="suggestions-list"></div></div></div>
+                    </div>
+                </div>
+                <div id="versusResults" class="d-none">
+                    <div class="row mb-4">
+                        <div class="col-md-6"><div class="tech-card p-4 text-center h-100"><h5 class="text-danger" style="font-family:'Rajdhani';font-weight:700;">HEAD-TO-HEAD</h5><div id="vsStats" class="mt-3">-</div></div></div>
+                        <div class="col-md-6"><div class="tech-card p-4 text-center h-100"><h5 class="text-success" style="font-family:'Rajdhani';font-weight:700;">SYNERGY</h5><div id="withStats" class="mt-3">-</div></div></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6"><div class="tech-card p-3"><h6 class="text-white border-bottom border-secondary pb-2">Best Teammates for <span id="lblHeroA" class="text-info">Hero A</span> against Hero B</h6><div id="listTeammatesA"></div></div></div>
+                        <div class="col-md-6"><div class="tech-card p-3"><h6 class="text-white border-bottom border-secondary pb-2">Best Teammates for <span id="lblHeroB" class="text-info">Hero B</span> against Hero A</h6><div id="listTeammatesB"></div></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. HISTORY -->
+            <div class="tab-pane fade" id="history-view">
+                <div class="tech-card p-3 mb-4">
+                    <div class="row g-2">
+                        <div class="col-md-3"><select id="histPatch" class="form-select" onchange="renderHistory()"><option value="">All Patches</option></select></div>
+                        <div class="col-md-3"><select id="histTourney" class="form-select" onchange="renderHistory()"><option value="">All Tournaments</option></select></div>
+                        <div class="col-md-2"><select id="histTeam" class="form-select" onchange="renderHistory()"><option value="">All Teams</option></select></div>
+                        <div class="col-md-2"><select id="histFilterType" class="form-select" onchange="renderHistory()"><option value="all">Picks + Bans</option><option value="picks">Picks Only</option></select></div>
+                        <div class="col-md-2"><div class="autocomplete-wrapper"><input type="text" id="histHero" class="form-control hero-input" placeholder="Search Hero..." oninput="renderHistory()"><div class="suggestions-list"></div></div></div>
+                    </div>
+                </div>
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HERO MODAL -->
+<div class="modal fade" id="heroModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" style="font-family:'Rajdhani';font-weight:700;text-transform:uppercase;">Tactical Analysis</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4" id="heroModalBody"></div></div></div></div>
+<!-- TOAST -->
+<div id="saveToast" class="custom-toast">Match Saved Successfully</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // --- SUPABASE KEYS ---
+    const SUPABASE_URL = 'https://qkrswylkdhxcudluztls.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrcnN3eWxrZGh4Y3VkbHV6dGxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMDU5NDIsImV4cCI6MjA4NTc4MTk0Mn0.dtYcMrHNESEycS_w4toWHQH9zFngGazYF0aaZD0hf9Y';
+    const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // --- VARS ---
+    let currentUser = null, userRole = 'viewer', globalMatches = [];
+    const HERO_NAMES=["Abaddon","Alchemist","Ancient Apparition","Anti-Mage","Arc Warden","Axe","Bane","Batrider","Beastmaster","Bloodseeker","Bounty Hunter","Brewmaster","Bristleback","Broodmother","Centaur Warrunner","Chaos Knight","Chen","Clinkz","Clockwerk","Crystal Maiden","Dark Seer","Dark Willow","Dawnbreaker","Dazzle","Death Prophet","Disruptor","Doom","Dragon Knight","Drow Ranger","Earth Spirit","Earthshaker","Elder Titan","Ember Spirit","Enchantress","Enigma","Faceless Void","Grimstroke","Gyrocopter","Hoodwink","Huskar","Invoker","Io","Jakiro","Juggernaut","Keeper of the Light","Kunkka","Legion Commander","Leshrac","Lich","Lifestealer","Lina","Lion","Lone Druid","Luna","Lycan","Magnus","Marci","Mars","Medusa","Meepo","Mirana","Monkey King","Morphling","Muerta","Naga Siren","Nature's Prophet","Necrophos","Night Stalker","Nyx Assassin","Ogre Magi","Omniknight","Oracle","Outworld Destroyer","Pangolier","Phantom Assassin","Phantom Lancer","Phoenix","Puck","Pudge","Pugna","Queen of Pain","Razor","Rhasta","Riki","Ringmaster","Rubick","Sand King","Shadow Demon","Shadow Fiend","Shadow Shaman","Silencer","Skywrath Mage","Slardar","Slark","Snapfire","Sniper","Spectre","Spirit Breaker","Storm Spirit","Sven","Techies","Templar Assassin","Terrorblade","Tidehunter","Timbersaw","Tinker","Tiny","Treant Protector","Troll Warlord","Tusk","Underlord","Undying","Ursa","Vengeful Spirit","Venomancer","Viper","Visage","Void Spirit","Warlock","Weaver","Windranger","Winter Wyvern","Witch Doctor","Wraith King","Zeus","Kez","Largo"];
+    const BAN_COUNT=7, PICK_COUNT=5; let currentSort={col:'total',dir:'desc'};
+
+    // --- HELPERS ---
+    function getHeroIconPath(h){if(!h)return'';return`./icons/${h.toLowerCase().replace(/'/g,'').replace(/ /g,'-')}.png`;}
+    function showToast(m){const t=document.getElementById('saveToast');t.innerText=m;t.classList.add('show');setTimeout(()=>{t.classList.remove('show');},3000);}
+    const formatFull = (w, g) => {
+        const l=g-w, wr=g>0?((w/g)*100).toFixed(0)+'%':'0%', clr=w/g>=0.5?'text-win':'text-loss';
+        return `<div class="d-flex align-items-center justify-content-end"><span class="stat-val-games">${g} Gms</span><span class="stat-val-wl mx-2">${w}-${l}</span><span class="stat-val-pct ${clr}">${wr}</span></div>`;
+    };
+
+    // --- AUTH ---
+    async function initAuth() {
+        const { data: { session } } = await sbClient.auth.getSession();
+        if (session) { currentUser = session.user; await checkUserRole(); showApp(); } 
+        else { document.getElementById('authSection').style.display = 'flex'; document.getElementById('appSection').style.display = 'none'; }
+    }
+    async function handleLogin() {
+        const email = document.getElementById('authEmail').value, password = document.getElementById('authPass').value;
+        const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+        if (error) document.getElementById('authMsg').innerText = error.message; else location.reload();
+    }
+    async function handleRegister() {
+        const email = document.getElementById('authEmail').value, password = document.getElementById('authPass').value;
+        const { data, error } = await sbClient.auth.signUp({ email, password });
+        if (error) document.getElementById('authMsg').innerText = error.message; else document.getElementById('authMsg').innerText = "Check email for confirmation.";
+    }
+    async function handleLogout() { await sbClient.auth.signOut(); location.reload(); }
+    
+    async function checkUserRole() {
+        const { data } = await sbClient.from('profiles').select('role').eq('id', currentUser.id).single();
+        if (data) {
+            userRole = data.role;
+            document.getElementById('userRoleBadge').innerText = userRole.toUpperCase();
+            if(userRole === 'admin') {
+                document.body.classList.add('is-admin');
+            } else {
+                const triggerEl = document.querySelector('#team-tab');
+                if(triggerEl) {
+                    // Manually trigger tab click for viewers
+                    new bootstrap.Tab(triggerEl).show();
+                }
+            }
+        }
+    }
+
+    function showApp() {
+        document.getElementById('authSection').style.display = 'none';
+        document.getElementById('appSection').style.display = 'block';
+        fetchMatches();
+    }
+
+    // --- DATA ---
+    async function fetchMatches() {
+        const { data, error } = await sbClient.from('matches').select('*').order('created_at', { ascending: false });
+        if(error) console.error(error);
+        else {
+            globalMatches = data.map(m => ({
+                id: m.id, date: m.created_at, patch: m.patch, tournament: m.tournament, type: m.match_type, winner: m.winner, firstPick: m.first_pick,
+                radiant: { name: m.radiant_name, bans: m.radiant_data.bans, picks: m.radiant_data.picks },
+                dire: { name: m.dire_name, bans: m.dire_data.bans, picks: m.dire_data.picks }
+            }));
+            updateGlobalLists();
+            generateDraftInputs('radiant'); generateDraftInputs('dire'); attachAutocompleteListeners(document);
+        }
+    }
+
+    async function saveMatch(matchData) {
+        const dbData = {
+            patch: matchData.patch, tournament: matchData.tournament, match_type: matchData.type, winner: matchData.winner, first_pick: matchData.firstPick,
+            radiant_name: matchData.radiant.name, dire_name: matchData.dire.name,
+            radiant_data: { bans: matchData.radiant.bans, picks: matchData.radiant.picks },
+            dire_data: { bans: matchData.dire.bans, picks: matchData.dire.picks }
+        };
+        const { error } = matchData.id ? await sbClient.from('matches').update(dbData).eq('id', matchData.id) : await sbClient.from('matches').insert([dbData]);
+        if (error) alert('Error: ' + error.message);
+        else { showToast('Match Saved Successfully'); fetchMatches(); resetForm(); }
+    }
+
+    async function deleteMatchDB(id) {
+        const { error } = await sbClient.from('matches').delete().eq('id', id);
+        if (error) alert('Error: ' + error.message); else fetchMatches();
+    }
+
+    // --- UI LOGIC ---
+    function updateGlobalLists(){
+        const m=globalMatches, p=[...new Set(m.map(x=>x.patch))].sort().reverse(), t=[...new Set(m.map(x=>x.tournament))].sort();
+        const teams=[...new Set([...m.map(x=>x.radiant.name),...m.map(x=>x.dire.name)])].sort();
+        ['listPatches','listTournaments','listTeams'].forEach((id,i)=>document.getElementById(id).innerHTML=[p,t,teams][i].map(v=>`<option value="${v}">`).join(''));
+        const fill=(id,arr)=>document.getElementById(id).innerHTML=`<option value="">All</option>`+arr.map(v=>`<option value="${v}">${v}</option>`).join('');
+        fill('statsPatch',p);fill('statsTourney',t);fill('statsTeam',teams);fill('histPatch',p);fill('histTourney',t);fill('histTeam',teams);fill('teamProfileSelect',teams);fill('tpPatch',p);fill('tpTourney',t);
+    }
+
+    function generateDraftInputs(side){
+        const b=document.getElementById(`${side}Bans`), p=document.getElementById(`${side}Picks`);
+        const c=(id,ph,isBan)=>`<div class="autocomplete-wrapper w-100"><input class="form-control form-control-sm hero-input ${isBan?'ban-input':''}" id="${id}" placeholder="${ph}" autocomplete="off"><div class="suggestions-list"></div></div>`;
+        if(!b.innerHTML) for(let i=1;i<=BAN_COUNT;i++)b.innerHTML+=`<div class="mb-1 row"><div class="col-12">${c(`${side}Ban${i}`,`BAN ${i}`,true)}</div></div>`;
+        if(!p.innerHTML) for(let i=1;i<=PICK_COUNT;i++)p.innerHTML+=`<div class="mb-2 d-flex gap-2 align-items-center"><div class="flex-grow-1">${c(`${side}Pick${i}`,`PICK ${i}`,false)}</div><div style="width:80px;"><select class="form-select form-select-sm" id="${side}Pos${i}"><option value="" disabled selected>POS</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div></div>`;
+    }
+
+    function attachAutocompleteListeners(s){
+        s.querySelectorAll('.hero-input').forEach(i=>i.addEventListener('input',function(){
+            const val=this.value.toLowerCase(), l=this.nextElementSibling; if(!val){l.style.display='none';return;}
+            const m=HERO_NAMES.filter(h=>h.toLowerCase().startsWith(val));
+            if(m.length){l.innerHTML=m.map(h=>`<div class="suggestion-item"><img src="${getHeroIconPath(h)}" class="hero-icon-sm"> ${h}</div>`).join('');l.style.display='block';
+            l.querySelectorAll('.suggestion-item').forEach(el=>el.addEventListener('click',()=>{i.value=el.innerText.trim();l.style.display='none';if(i.id.includes('hero'))renderVersus();if(i.id.includes('hist'))renderHistory();}));}else l.style.display='none';
+        }));
+    }
+
+    document.addEventListener('click',(e)=>{if(!e.target.closest('.autocomplete-wrapper'))document.querySelectorAll('.suggestions-list').forEach(el=>el.style.display='none');});
+
+    document.getElementById('matchForm').addEventListener('submit',function(e){
+        e.preventDefault();
+        const collect=(s,t,c)=>{const a=[];for(let i=1;i<=c;i++){const h=document.getElementById(`${s}${t}${i}`).value.trim(),p=document.getElementById(`${s}Pos${i}`)?.value;if(h)a.push({hero:h,pos:p});}return a;};
+        const id=document.getElementById('matchId').value,fpRadiant=document.getElementById('fpRadiant').checked;
+        const data={id:id,patch:document.getElementById('patchInput').value,tournament:document.getElementById('tournamentInput').value,type:document.getElementById('matchType').value,winner:document.getElementById('winnerInput').value,firstPick:fpRadiant?'Radiant':'Dire',radiant:{name:document.getElementById('radiantName').value,bans:collect('radiant','Ban',BAN_COUNT),picks:collect('radiant','Pick',PICK_COUNT)},dire:{name:document.getElementById('direName').value,bans:collect('dire','Ban',BAN_COUNT),picks:collect('dire','Pick',PICK_COUNT)}};
+        saveMatch(data);
+    });
+
+    function resetForm() { document.getElementById('matchForm').reset(); document.getElementById('matchId').value=''; }
+
+    // --- RENDER FUNCTIONS ---
+    function renderTeamProfile() {
+        const team=document.getElementById('teamProfileSelect').value, fPatch=document.getElementById('tpPatch').value, fTourney=document.getElementById('tpTourney').value;
+        const c=document.getElementById('teamProfileContent'); if(!team){c.classList.add('d-none');return;} c.classList.remove('d-none');
+        const matches=globalMatches.filter(m=>(m.radiant.name===team||m.dire.name===team)&&(!fPatch||m.patch===fPatch)&&(!fTourney||m.tournament===fTourney));
+        let stats={g:matches.length,w:0,rad:{g:0,w:0},dire:{g:0,w:0},fp:{g:0,w:0},sp:{g:0,w:0}}, heroes={}, bansBy={}, bansAgainst={}, roles={1:0,2:0,3:0,4:0,5:0}, fpHeroes={}, combos2={}, combos3={};
+        matches.forEach(m=>{
+            const isRad=m.radiant.name===team, my=isRad?m.radiant:m.dire, en=isRad?m.dire:m.radiant, win=(isRad&&m.winner==='Radiant')||(!isRad&&m.winner==='Dire'), hasFP=(isRad&&m.firstPick==='Radiant')||(!isRad&&m.firstPick==='Dire');
+            if(win)stats.w++; if(isRad){stats.rad.g++;if(win)stats.rad.w++;}else{stats.dire.g++;if(win)stats.dire.w++;} if(hasFP){stats.fp.g++;if(win)stats.fp.w++;}else{stats.sp.g++;if(win)stats.sp.w++;}
+            my.picks.forEach((p,i)=>{if(!heroes[p.hero])heroes[p.hero]={g:0,w:0};heroes[p.hero].g++;if(win)heroes[p.hero].w++; if(i<3&&p.pos)roles[p.pos]++; if(hasFP&&i===0){if(!fpHeroes[p.hero])fpHeroes[p.hero]={g:0,w:0};fpHeroes[p.hero].g++;if(win)fpHeroes[p.hero].w++;}});
+            my.bans.forEach(b=>{if(!bansBy[b.hero])bansBy[b.hero]=0;bansBy[b.hero]++;}); en.bans.forEach(b=>{if(!bansAgainst[b.hero])bansAgainst[b.hero]=0;bansAgainst[b.hero]++;});
+            const picks=my.picks.map(p=>p.hero).sort();
+            for(let i=0;i<picks.length;i++)for(let j=i+1;j<picks.length;j++){const k=picks[i]+'|'+picks[j];if(!combos2[k])combos2[k]={g:0,w:0,k:picks[i],k2:picks[j]};combos2[k].g++;if(win)combos2[k].w++;}
+            for(let i=0;i<picks.length;i++)for(let j=i+1;j<picks.length;j++)for(let k=j+1;k<picks.length;k++){const key=picks[i]+'|'+picks[j]+'|'+picks[k];if(!combos3[key])combos3[key]={g:0,w:0,k:picks[i],k2:picks[j],k3:picks[k]};combos3[key].g++;if(win)combos3[key].w++;}
+        });
+        const pct=(w,g)=>g>0?((w/g)*100).toFixed(0)+'%':'0%';
+        document.getElementById('tp-overall').innerHTML=`${stats.g} Games | ${pct(stats.w,stats.g)} WR`;
+        document.getElementById('tp-sides').innerHTML=`Rad: ${stats.rad.g} (${pct(stats.rad.w,stats.rad.g)}) | Dire: ${stats.dire.g} (${pct(stats.dire.w,stats.dire.g)})`;
+        document.getElementById('tp-pickorder').innerHTML=`FP: ${stats.fp.g} (${pct(stats.fp.w,stats.fp.g)}) | SP: ${stats.sp.g} (${pct(stats.sp.w,stats.sp.g)})`;
+        const renderH=(arr)=>arr.map(([k,v])=>`<div class="d-flex justify-content-between border-bottom border-secondary py-1 align-items-center"><span><img src="${getHeroIconPath(k)}" class="hero-icon-sm">${k}</span>${formatFull(v.w,v.g)}</div>`).join('');
+        document.getElementById('tp-top-played').innerHTML=renderH(Object.entries(heroes).sort((a,b)=>b[1].g-a[1].g).slice(0,10));
+        document.getElementById('tp-top-wr').innerHTML=renderH(Object.entries(heroes).filter(x=>x[1].g>=3).sort((a,b)=>(b[1].w/b[1].g)-(a[1].w/a[1].g)).slice(0,10));
+        document.getElementById('tp-fp-heroes').innerHTML=renderH(Object.entries(fpHeroes).sort((a,b)=>b[1].g-a[1].g).slice(0,5));
+        document.getElementById('tp-draft-priority').innerHTML=Object.entries(roles).sort((a,b)=>b[1]-a[1]).map(([r,c])=>`<div class="stat-box flex-grow-1"><div class="stat-box-label">Pos ${r}</div><div class="fw-bold text-white">${c} <span class="small text-muted">(${((c/stats.g)*100).toFixed(0)}%)</span></div></div>`).join('');
+        const renderBans=(obj)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>`<div class="d-flex justify-content-between border-bottom border-secondary py-1 small align-items-center"><span><img src="${getHeroIconPath(k)}" class="hero-icon-sm">${k}</span><span class="text-white">${v}x</span></div>`).join('');
+        document.getElementById('tp-bans-by').innerHTML=renderBans(bansBy); document.getElementById('tp-bans-against').innerHTML=renderBans(bansAgainst);
+        const renderC=(obj,is3)=>Object.values(obj).filter(x=>x.g>=3).sort((a,b)=>(b.w/b.g)-(a.w/a.g)).slice(0,5).map(v=>`<div class="d-flex justify-content-between border-bottom border-secondary py-1 align-items-center"><div><img src="${getHeroIconPath(v.k)}" class="hero-icon-sm" style="width:28px;height:16px;"><img src="${getHeroIconPath(v.k2)}" class="hero-icon-sm" style="width:28px;height:16px;">${is3?`<img src="${getHeroIconPath(v.k3)}" class="hero-icon-sm" style="width:28px;height:16px;">`:''}</div>${formatFull(v.w,v.g)}</div>`).join('');
+        document.getElementById('tp-combos-2').innerHTML=renderC(combos2,false)||'<div class="text-no-data">No data</div>'; document.getElementById('tp-combos-3').innerHTML=renderC(combos3,true)||'<div class="text-no-data">No data</div>';
+    }
+
+    function renderStats(){
+        const stats={},fp=document.getElementById('statsPatch').value,ft=document.getElementById('statsTourney').value,ftm=document.getElementById('statsTeam').value,fpos=document.getElementById('statsPos').value;
+        globalMatches.forEach(x=>{if(fp&&x.patch!==fp)return;if(ft&&x.tournament!==ft)return;const proc=(t,w)=>{if(ftm&&!t.name.toLowerCase().includes(ftm.toLowerCase()))return;t.picks.forEach(p=>{if(fpos&&p.pos!==fpos)return;if(!stats[p.hero])stats[p.hero]={hero:p.hero,picks:0,wins:0,bans:0};stats[p.hero].picks++;if(w)stats[p.hero].wins++;});if(!fpos)t.bans.forEach(b=>{if(!stats[b.hero])stats[b.hero]={hero:b.hero,picks:0,wins:0,bans:0};stats[b.hero].bans++;});};proc(x.radiant,x.winner==='Radiant');proc(x.dire,x.winner==='Dire');});
+        let arr=Object.values(stats);arr.forEach(s=>s.total=s.picks+s.bans);arr.sort((a,b)=>{let va=a[currentSort.col],vb=b[currentSort.col];if(currentSort.col==='winrate'){va=a.picks?a.wins/a.picks:0;vb=b.picks?b.wins/b.picks:0;}if(va<vb)return currentSort.dir==='asc'?-1:1;if(va>vb)return currentSort.dir==='asc'?1:-1;return 0;});
+        document.getElementById('statsTableBody').innerHTML=arr.map(s=>`<tr class="stats-row" onclick="showHeroDetails('${s.hero}')"><td><img src="${getHeroIconPath(s.hero)}" class="hero-icon-sm">${s.hero}</td><td class="text-center">${s.picks}</td><td class="text-center">${s.wins}</td><td class="text-center ${s.picks?(s.wins/s.picks>=0.5?'text-win':'text-loss'):''}">${s.picks?((s.wins/s.picks)*100).toFixed(0)+'%':'-'}</td><td class="text-center text-secondary">${s.bans}</td><td class="text-center text-info fw-bold">${s.total}</td></tr>`).join('');
+    }
+
+    function showHeroDetails(hero){
+        let total={p:0,w:0},posS={1:{p:0,w:0},2:{p:0,w:0},3:{p:0,w:0},4:{p:0,w:0},5:{p:0,w:0},'Unknown':{p:0,w:0}},matchups={},synergies={},teamStats={},phase={fp:{picks:[0,0,0,0,0,0],bans:[0,0,0,0,0,0,0,0]},sp:{picks:[0,0,0,0,0,0],bans:[0,0,0,0,0,0,0,0]}};
+        globalMatches.forEach(m=>{
+            let my,en,win=false,isFP=false;const rPick=m.radiant.picks.findIndex(p=>p.hero===hero),rBan=m.radiant.bans.findIndex(b=>b.hero===hero),dPick=m.dire.picks.findIndex(p=>p.hero===hero),dBan=m.dire.bans.findIndex(b=>b.hero===hero);
+            if(rPick!==-1){my=m.radiant;en=m.dire;win=m.winner==='Radiant';total.p++;if(win)total.w++;posS[my.picks[rPick].pos||'Unknown'].p++;if(win)posS[my.picks[rPick].pos||'Unknown'].w++;isFP=m.firstPick==='Radiant';if(isFP)phase.fp.picks[rPick+1]++;else phase.sp.picks[rPick+1]++;}
+            else if(dPick!==-1){my=m.dire;en=m.radiant;win=m.winner==='Dire';total.p++;if(win)total.w++;posS[my.picks[dPick].pos||'Unknown'].p++;if(win)posS[my.picks[dPick].pos||'Unknown'].w++;isFP=m.firstPick==='Dire';if(isFP)phase.fp.picks[dPick+1]++;else phase.sp.picks[dPick+1]++;}
+            else{if(rBan!==-1){isFP=m.firstPick==='Radiant';if(isFP)phase.fp.bans[rBan+1]++;else phase.sp.bans[rBan+1]++;}if(dBan!==-1){isFP=m.firstPick==='Dire';if(isFP)phase.fp.bans[dBan+1]++;else phase.sp.bans[dBan+1]++;}return;}
+            if(my.name){if(!teamStats[my.name])teamStats[my.name]={g:0,w:0};teamStats[my.name].g++;if(win)teamStats[my.name].w++;}
+            my.picks.forEach(p=>{if(p.hero!==hero){if(!synergies[p.hero])synergies[p.hero]={g:0,w:0};synergies[p.hero].g++;if(win)synergies[p.hero].w++;}});en.picks.forEach(p=>{if(!matchups[p.hero])matchups[p.hero]={g:0,w:0};matchups[p.hero].g++;if(win)matchups[p.hero].w++;});
+        });
+        const list=(o,d)=>Object.entries(o).filter(x=>x[1].g>=3).sort((a,b)=>d?(b[1].w/b[1].g)-(a[1].w/a[1].g):(a[1].w/a[1].g)-(b[1].w/b[1].g)).slice(0,5);
+        const bestVs=list(matchups,true),worstVs=list(matchups,false),bestWith=list(synergies,true),teams=Object.entries(teamStats).sort((a,b)=>b[1].g-a[1].g);
+        const pRow=(l,a)=>`<tr><td class="text-white-50">${l}</td>${a.slice(1).map(x=>`<td class="text-center ${x>0?'text-white fw-bold':'text-muted'}">${x||'-'}</td>`).join('')}</tr>`;
+        const renderList=(arr)=>arr.map(([h,s])=>`<div class="d-flex justify-content-between border-bottom border-dark px-2 align-items-center"><span><img src="${getHeroIconPath(h)}" class="hero-icon-sm">${h}</span>${formatFull(s.w,s.g)}</div>`).join('')||'<div class="text-no-data">No data</div>';
+        document.getElementById('heroModalBody').innerHTML=`<div class="d-flex align-items-center mb-4 p-3 rounded" style="background:#0b0c10;border:1px solid #333;"><img src="${getHeroIconPath(hero)}" class="hero-icon-lg me-3"><div class="flex-grow-1"><h1 class="mb-0 text-white" style="font-family:'Rajdhani'">${hero}</h1><div class="text-white mt-1">${formatFull(total.w,total.p)}</div></div></div><h6 class="text-white border-bottom border-secondary pb-2">PHASE ANALYSIS</h6><div class="row g-4 mb-4"><div class="col-md-6"><div class="tech-card p-2"><div class="text-center text-info small fw-bold mb-2">PICK PHASE</div><table class="table table-sm table-dark table-bordered mb-0 small"><thead><tr><th>Side</th><th>1st</th><th>2nd</th><th>3rd</th><th>4th</th><th>5th</th></tr></thead><tbody>${pRow('When FP',phase.fp.picks)}${pRow('When SP',phase.sp.picks)}</tbody></table></div></div><div class="col-md-6"><div class="tech-card p-2"><div class="text-center text-danger small fw-bold mb-2">BAN PHASE</div><table class="table table-sm table-dark table-bordered mb-0 small"><thead><tr><th>Side</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr></thead><tbody>${pRow('When FP',phase.fp.bans)}${pRow('When SP',phase.sp.bans)}</tbody></table></div></div></div><div class="row g-4"><div class="col-12"><div class="d-flex justify-content-between text-center py-2 gap-2">${[1,2,3,4,5].map(pos=>`<div class="flex-grow-1 stat-box"><div class="stat-box-label">POS ${pos}</div><div class="d-flex justify-content-center">${formatFull(posS[pos].w,posS[pos].p)}</div></div>`).join('')}</div></div><div class="col-md-6"><h6 class="text-white-50 small mb-2">MATCHUPS (Min 3)</h6><div class="tech-card p-2"><div class="text-success small mb-1 fw-bold border-bottom border-dark">BEST VS</div>${renderList(bestVs)}<div class="text-danger small mt-2 mb-1 fw-bold border-bottom border-dark">WORST VS</div>${renderList(worstVs)}</div></div><div class="col-md-6"><h6 class="text-white-50 small mb-2">SYNERGY (Min 3)</h6><div class="tech-card p-2"><div class="text-info small mb-1 fw-bold border-bottom border-dark">BEST WITH</div>${renderList(bestWith)}</div></div><div class="col-12"><h6 class="text-white-50 small mb-2">TEAM HISTORY</h6><table class="table table-sm table-dark table-striped small mb-0 text-white"><thead><tr><th>Team</th><th>Stats</th></tr></thead><tbody>${teams.map(([t,s])=>`<tr><td>${t}</td><td>${formatFull(s.w,s.g)}</td></tr>`).join('')}</tbody></table></div></div>`;
+        new bootstrap.Modal(document.getElementById('heroModal')).show();
+    }
+
+    function renderVersus(){const a=document.getElementById('heroA').value,b=document.getElementById('heroB').value;if(!a||!b)return;document.getElementById('versusResults').classList.remove('d-none');document.getElementById('lblHeroA').innerText=a;document.getElementById('lblHeroB').innerText=b;let vs={g:0,wA:0,wB:0},withS={g:0,w:0},mA={},mB={};globalMatches.forEach(x=>{const hA_R=x.radiant.picks.some(p=>p.hero===a),hA_D=x.dire.picks.some(p=>p.hero===a),hB_R=x.radiant.picks.some(p=>p.hero===b),hB_D=x.dire.picks.some(p=>p.hero===b);if((hA_R&&hB_D)||(hA_D&&hB_R)){vs.g++;const winA=(hA_R&&x.winner==='Radiant')||(hA_D&&x.winner==='Dire');if(winA)vs.wA++;else vs.wB++;const tA=hA_R?x.radiant.picks:x.dire.picks,tB=hB_R?x.radiant.picks:x.dire.picks;tA.forEach(p=>{if(p.hero!==a){if(!mA[p.hero])mA[p.hero]={g:0,w:0};mA[p.hero].g++;if(winA)mA[p.hero].w++;}});tB.forEach(p=>{if(p.hero!==b){if(!mB[p.hero])mB[p.hero]={g:0,w:0};mB[p.hero].g++;if(!winA)mB[p.hero].w++;}});}if((hA_R&&hB_R)||(hA_D&&hB_D)){withS.g++;if((hA_R&&x.winner==='Radiant')||(hA_D&&x.winner==='Dire'))withS.w++;}});
+    const renBig=(w,g)=>{const l=g-w,wr=g>0?((w/g)*100).toFixed(0)+'%':'0%',c=w/g>=0.5?'text-win':'text-loss';return `<div class="d-flex justify-content-center align-items-center gap-3 mt-2"><div class="d-flex flex-column lh-1"><span class="fs-2 fw-bold text-white">${g}</span><span class="small text-muted text-uppercase">Games</span></div><div class="vr bg-secondary mx-2"></div><div class="d-flex flex-column lh-1"><span class="fs-2 fw-bold text-white">${w}-${l}</span><span class="small text-muted text-uppercase">Record</span></div><div class="vr bg-secondary mx-2"></div><div class="d-flex flex-column lh-1"><span class="fs-1 fw-bold ${c}">${wr}</span><span class="small text-muted text-uppercase">Winrate</span></div></div>`;};
+    document.getElementById('vsStats').innerHTML=`<div class="fs-6 mb-2 text-white-50">${a}: ${vs.wA} | ${b}: ${vs.wB}</div>${renBig(vs.wA,vs.g)}`;document.getElementById('withStats').innerHTML=renBig(withS.w,withS.g);const list=(o)=>Object.entries(o).sort((x,y)=>(y[1].w/y[1].g)-(x[1].w/x[1].g)).slice(0,5).map(([h,s])=>`<div class="d-flex justify-content-between border-bottom border-secondary py-1 align-items-center"><span><img src="${getHeroIconPath(h)}" class="hero-icon-sm">${h}</span>${formatFull(s.w,s.g)}</div>`).join('')||'<div class="text-no-data">No data</div>';document.getElementById('listTeammatesA').innerHTML=list(mA);document.getElementById('listTeammatesB').innerHTML=list(mB);}
+
+    function renderHistory(){const fp=document.getElementById('histPatch').value,ft=document.getElementById('histTourney').value,ftm=document.getElementById('histTeam').value,type=document.getElementById('histFilterType').value,fh=document.getElementById('histHero').value.toLowerCase();const cont=document.getElementById('historyList');cont.innerHTML='';globalMatches.forEach(x=>{if(fp&&x.patch!==fp)return;if(ft&&x.tournament!==ft)return;if(ftm&&x.radiant.name!==ftm&&x.dire.name!==ftm)return;if(fh){const p=[...x.radiant.picks,...x.dire.picks].map(z=>z.hero.toLowerCase()),b=[...x.radiant.bans,...x.dire.bans].map(z=>z.hero.toLowerCase());if(type==='picks'&&!p.includes(fh))return;if(type==='all'&&!p.includes(fh)&&!b.includes(fh))return;}const rw=x.winner==='Radiant',ri=(l,b)=>l.map(z=>`<div class="${b?'hist-ban-wrapper':'hist-pick-wrapper'}"><img src="${getHeroIconPath(z.hero)}" class="${b?'hist-ban-img':'hist-pick-img'}">${!b?`<span class="hist-pos-badge">${z.pos}</span>`:''}</div>`).join('');cont.innerHTML+=`<div class="tech-card mb-3 p-0" style="border-left:5px solid var(--${rw?'radiant':'dire'})"><div class="history-card-header d-flex justify-content-between p-2 px-3"><div><span class="badge bg-secondary me-2">${x.patch}</span><span class="fw-bold text-white">${x.tournament}</span></div>${userRole==='admin'?`<div><button class="btn btn-sm btn-outline-light border-0" onclick="editMatch('${x.id}')"><i class="bi bi-pencil-square"></i></button><button class="btn btn-sm btn-outline-danger border-0" onclick="deleteMatch('${x.id}')"><i class="bi bi-trash"></i></button></div>`:''}</div><div class="d-flex flex-column"><div class="p-2 px-3 border-bottom border-dark d-flex align-items-center" style="background:rgba(0,255,204,0.05)"><div style="width:150px" class="fw-bold ${rw?'text-win':'text-secondary'}">${x.radiant.name} ${rw?'<i class="bi bi-trophy-fill"></i>':''}</div><div class="d-flex flex-grow-1"><div class="me-4 d-flex">${ri(x.radiant.picks,false)}</div><div class="d-flex opacity-75">${ri(x.radiant.bans,true)}</div></div></div><div class="p-2 px-3 d-flex align-items-center" style="background:rgba(255,42,42,0.05)"><div style="width:150px" class="fw-bold ${!rw?'text-loss':'text-secondary'}">${x.dire.name} ${!rw?'<i class="bi bi-trophy-fill"></i>':''}</div><div class="d-flex flex-grow-1"><div class="me-4 d-flex">${ri(x.dire.picks,false)}</div><div class="d-flex opacity-75">${ri(x.dire.bans,true)}</div></div></div></div></div>`;});}
+    function editMatch(id){const m=globalMatches.find(x=>x.id===id);if(!m)return;bootstrap.Tab.getInstance(document.querySelector('#myTab button[data-bs-target="#input-view"]')).show();document.getElementById('matchId').value=m.id;document.getElementById('patchInput').value=m.patch;document.getElementById('tournamentInput').value=m.tournament;document.getElementById('matchType').value=m.type;document.getElementById('winnerInput').value=m.winner;if(m.firstPick==='Dire')document.getElementById('fpDire').checked=true;else document.getElementById('fpRadiant').checked=true;document.getElementById('radiantName').value=m.radiant.name;document.getElementById('direName').value=m.dire.name;const fill=(s,t,arr)=>arr.forEach((x,i)=>{document.getElementById(`${s}${t}${i+1}`).value=x.hero;if(t==='Pick')document.getElementById(`${s}Pos${i+1}`).value=x.pos;});fill('radiant','Ban',m.radiant.bans);fill('radiant','Pick',m.radiant.picks);fill('dire','Ban',m.dire.bans);fill('dire','Pick',m.dire.picks);window.scrollTo(0,0);}
+    function deleteMatch(id){if(confirm('Delete?')){deleteMatchDB(id);}}
+    function changeSort(c){currentSort.col=c;currentSort.dir=currentSort.dir==='asc'?'desc':'asc';renderStats();}
+    
+    document.addEventListener('DOMContentLoaded', initAuth);
+</script>
+</body>
+</html>
