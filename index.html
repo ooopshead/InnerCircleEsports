@@ -244,8 +244,8 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     // --- SUPABASE KEYS ---
-    const SUPABASE_URL = 'https://qkrswylkdhxcudluztls.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrcnN3eWxrZGh4Y3VkbHV6dGxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMDU5NDIsImV4cCI6MjA4NTc4MTk0Mn0.dtYcMrHNESEycS_w4toWHQH9zFngGazYF0aaZD0hf9Y';
+    const SUPABASE_URL = 'https://harnrdtytmgyhfeieadr.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_tfqzDFFyC-_lpsDN395Q5Q_4s1fMdvs';
     
     const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let currentUser=null, userRole='viewer', globalMatches=[];
@@ -302,14 +302,40 @@
     // DATA
     async function fetchMatches() {
         const { data, error } = await sbClient.from('matches').select('*').order('created_at', { ascending: false });
-        if(!error) {
-            globalMatches = data.map(m => ({
-                id: m.id, date: m.created_at, patch: m.patch, tournament: m.tournament, type: m.match_type, winner: m.winner, firstPick: m.first_pick,
-                radiant: { name: m.radiant_name, bans: m.radiant_data.bans, picks: m.radiant_data.picks },
-                dire: { name: m.dire_name, bans: m.dire_data.bans, picks: m.dire_data.picks }
-            }));
-            updateGlobalLists(); generateDraftInputs('radiant'); generateDraftInputs('dire'); attachAutocompleteListeners(document);
+        if (error) {
+            console.error('fetchMatches error:', error);
+            return;
         }
+
+        globalMatches = (data || []).map(m => {
+            const radiantData = (m && m.radiant_data && typeof m.radiant_data === 'object' && !Array.isArray(m.radiant_data)) ? m.radiant_data : {};
+            const direData = (m && m.dire_data && typeof m.dire_data === 'object' && !Array.isArray(m.dire_data)) ? m.dire_data : {};
+
+            return {
+                id: m.id,
+                date: m.created_at,
+                patch: m.patch || '',
+                tournament: m.tournament || '',
+                type: m.match_type || '',
+                winner: m.winner || '',
+                firstPick: m.first_pick || '',
+                radiant: {
+                    name: m.radiant_name || '',
+                    bans: Array.isArray(radiantData.bans) ? radiantData.bans : [],
+                    picks: Array.isArray(radiantData.picks) ? radiantData.picks : []
+                },
+                dire: {
+                    name: m.dire_name || '',
+                    bans: Array.isArray(direData.bans) ? direData.bans : [],
+                    picks: Array.isArray(direData.picks) ? direData.picks : []
+                }
+            };
+        });
+
+        updateGlobalLists();
+        generateDraftInputs('radiant');
+        generateDraftInputs('dire');
+        attachAutocompleteListeners(document);
     }
     async function saveMatch(d) {
         const db = { patch: d.patch, tournament: d.tournament, match_type: d.type, winner: d.winner, first_pick: d.firstPick, radiant_name: d.radiant.name, dire_name: d.dire.name, radiant_data: { bans: d.radiant.bans, picks: d.radiant.picks }, dire_data: { bans: d.dire.bans, picks: d.dire.picks }};
@@ -426,6 +452,26 @@
     function changeSort(c){currentSort.col=c;currentSort.dir=currentSort.dir==='asc'?'desc':'asc';renderStats();}
     
     // START
+
+    function resetForm() {
+        const form = document.getElementById('matchForm');
+        if (form) form.reset();
+
+        const matchId = document.getElementById('matchId');
+        if (matchId) matchId.value = '';
+
+        const fpRadiant = document.getElementById('fpRadiant');
+        const fpDire = document.getElementById('fpDire');
+
+        if (fpRadiant) fpRadiant.checked = true;
+        if (fpDire) fpDire.checked = false;
+
+        document.querySelectorAll('.suggestions-list').forEach(el => {
+            el.innerHTML = '';
+            el.style.display = 'none';
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', initAuth);
 </script>
 </body>
